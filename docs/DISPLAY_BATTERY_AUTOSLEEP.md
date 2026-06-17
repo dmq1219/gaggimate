@@ -55,6 +55,19 @@ sends standby/brew/stop/valve/pump/heater commands before sleeping.
   timeout in seconds), backed by `Settings.autoSleepNoController` / `noControllerSleepTimeout`.
   Compile-time defaults live in `constants.h`.
 
+### Idle-while-connected sleep (`AutoSleepManager`)
+- A second, independent policy (`SleepReason::Idle`) with its own enable flag + timeout
+  (`Settings.autoSleepIdle` / `idleSleepTimeout`, default **on / 120 s**, in `constants.h`).
+- Even while the controller **is** connected, the display deep-sleeps after `idleSleepTimeout`
+  with **no touch**, provided the machine is not busy. An idle but **hot** boiler (MODE_BREW
+  standing by) **still sleeps**; a running brew/steam/grind process — or being in **STEAM /
+  WATER** mode (boiler driven on demand) — counts as busy and keeps the screen on.
+- The idle countdown is driven by LVGL's input-inactivity clock
+  (`lv_disp_get_inactive_time`), so **any touch resets it**. Wiring is in
+  `DefaultUI::tickAutoSleep()` (`setIdleEnabled` / `setIdleTimeoutMs` / `setMachineBusy` +
+  feeding the touch reset). Same Web UI section and same suppression (OTA / autotune) as above.
+- Wake is identical to the no-controller case: touch → reboot → re-scan / reconnect BLE.
+
 ### Wake behaviour
 - The LilyGo T-RGB display enters ESP32-S3 deep sleep with touch IRQ configured as
   the wake source (`panel.enableTouchWakeup(); panel.sleep();`).

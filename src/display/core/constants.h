@@ -19,6 +19,13 @@
 #define DEFAULT_NO_CONTROLLER_SLEEP_TIMEOUT_MS 120000 // 2 minutes
 #define NO_CONTROLLER_SLEEP_CHECK_INTERVAL_MS 1000
 
+// [display-auto-sleep] Idle-while-connected: even WITH a controller connected,
+// deep-sleep the display when the screen has not been touched for this long AND
+// no brew/steam/grind process is running (the boiler may still be hot). Display
+// only; wakes on touch. Evaluated on the same cadence as the no-controller check.
+#define DEFAULT_AUTO_SLEEP_IDLE true
+#define DEFAULT_IDLE_SLEEP_TIMEOUT_MS 120000 // 2 minutes
+
 // [display-battery] Single-cell Li-ion telemetry (display-only). Sampling cadence,
 // samples averaged per reading, and the low/critical thresholds in millivolts.
 #define BATTERY_SAMPLE_INTERVAL_MS 30000

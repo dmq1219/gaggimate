@@ -96,10 +96,13 @@ Settings::Settings() {
     standbyBrightnessTimeout = preferences.getInt("standby_bt", 60000);
     // [display-auto-sleep] display-only
     autoSleepNoController = preferences.getBool("as_noctl", DEFAULT_AUTO_SLEEP_NO_CONTROLLER);
-    // Clamp persisted timeout: a corrupt/negative/zero value would flow into
+    // Clamp persisted timeouts: corrupt/negative/zero values would flow into
     // AutoSleepManager::setTimeoutMs(uint32_t) and could wrap or sleep instantly.
     noControllerSleepTimeout = std::clamp(preferences.getInt("as_noctl_t", DEFAULT_NO_CONTROLLER_SLEEP_TIMEOUT_MS),
                                           NO_CONTROLLER_SLEEP_CHECK_INTERVAL_MS, 24 * 60 * 60 * 1000);
+    autoSleepIdle = preferences.getBool("as_idle", DEFAULT_AUTO_SLEEP_IDLE);
+    idleSleepTimeout = std::clamp(preferences.getInt("as_idle_t", DEFAULT_IDLE_SLEEP_TIMEOUT_MS),
+                                  NO_CONTROLLER_SLEEP_CHECK_INTERVAL_MS, 24 * 60 * 60 * 1000);
     wifiApTimeout = preferences.getInt("wifi_apt", DEFAULT_WIFI_AP_TIMEOUT_MS);
     themeMode = preferences.getInt("theme", 0);
 
@@ -385,6 +388,16 @@ void Settings::setNoControllerSleepTimeout(int timeout_ms) {
     save();
 }
 
+void Settings::setAutoSleepIdle(bool enabled) {
+    autoSleepIdle = enabled;
+    save();
+}
+
+void Settings::setIdleSleepTimeout(int timeout_ms) {
+    idleSleepTimeout = std::clamp(timeout_ms, NO_CONTROLLER_SLEEP_CHECK_INTERVAL_MS, 24 * 60 * 60 * 1000);
+    save();
+}
+
 void Settings::setWifiApTimeout(int timeout) {
     wifiApTimeout = timeout;
     save();
@@ -583,6 +596,8 @@ void Settings::doSave() {
     // [display-auto-sleep] display-only
     preferences.putBool("as_noctl", autoSleepNoController);
     preferences.putInt("as_noctl_t", noControllerSleepTimeout);
+    preferences.putBool("as_idle", autoSleepIdle);
+    preferences.putInt("as_idle_t", idleSleepTimeout);
     preferences.putInt("wifi_apt", wifiApTimeout);
     preferences.putInt("theme", themeMode);
 

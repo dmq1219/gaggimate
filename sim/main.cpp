@@ -10,6 +10,7 @@
 #include <display/core/Controller.h>
 #include <display/plugins/ShotHistoryPlugin.h>
 #include <display/ui/default/DefaultUI.h>
+#include <display/ui/default/lvgl/ui.h>
 
 // The generated UI event handlers reference this global (see main.h on device).
 Controller controller;
@@ -43,7 +44,35 @@ int main(int argc, char **argv) {
     const unsigned long start = millis();
     bool shotTaken = false;
 
+    // Dev aid (sim only): GM_SIM_SCREEN=brew|steam|water|menu jumps to that control
+    // screen ~1.5 s after boot so UI work can be screenshotted without touch input.
+    const char *forceScreen = getenv("GM_SIM_SCREEN");
+    bool screenForced = false;
+
     while (!drv->shouldQuit()) {
+        if (forceScreen && !screenForced && ui && millis() - start >= 1500) {
+            screenForced = true;
+            if (strcmp(forceScreen, "steam") == 0) {
+                controller.setMode(MODE_STEAM);
+                ui->changeScreen(&ui_SimpleProcessScreen, &ui_SimpleProcessScreen_screen_init);
+            } else if (strcmp(forceScreen, "water") == 0) {
+                controller.setMode(MODE_WATER);
+                ui->changeScreen(&ui_SimpleProcessScreen, &ui_SimpleProcessScreen_screen_init);
+            } else if (strcmp(forceScreen, "menu") == 0) {
+                ui->changeScreen(&ui_MenuScreen, &ui_MenuScreen_screen_init);
+            } else if (strcmp(forceScreen, "status") == 0) {
+                controller.setMode(MODE_BREW);
+                controller.activate(); // start a brew -> transitions to StatusScreen
+            } else { // "brew"
+                controller.setMode(MODE_BREW);
+                ui->changeScreen(&ui_BrewScreen, &ui_BrewScreen_screen_init);
+            }
+            // GM_SIM_ACTIVE=1 starts the process so active-only widgets (e.g. the
+            // steam swirl goButton, shown only while steaming) become visible.
+            if (getenv("GM_SIM_ACTIVE")) {
+                controller.activate();
+            }
+        }
         controller.loop();      // connection lifecycle, comms pump, plugins
         controller.loopLogic(); // process + control logic (normally a FreeRTOS task)
 

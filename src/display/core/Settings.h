@@ -99,6 +99,9 @@ class Settings {
     // [display-auto-sleep] display-only: sleep the screen when no controller is found
     bool isAutoSleepNoController() const { return autoSleepNoController; }
     int getNoControllerSleepTimeout() const { return noControllerSleepTimeout; }
+    // [display-auto-sleep] display-only: sleep the screen when idle though connected
+    bool isAutoSleepIdle() const { return autoSleepIdle; }
+    int getIdleSleepTimeout() const { return idleSleepTimeout; }
     int getWifiApTimeout() const { return wifiApTimeout; }
     float getSteamPumpPercentage() const { return steamPumpPercentage; }
     float getSteamPumpCutoff() const { return steamPumpCutoff; }
@@ -188,6 +191,8 @@ class Settings {
     void setStandbyBrightnessTimeout(int standby_brightness_timeout);
     void setAutoSleepNoController(bool enabled);
     void setNoControllerSleepTimeout(int timeout_ms);
+    void setAutoSleepIdle(bool enabled);
+    void setIdleSleepTimeout(int timeout_ms);
     void setWifiApTimeout(int timeout);
     void setSteamPumpPercentage(float steam_pump_percentage);
     void setSteamPumpCutoff(float steam_pump_cutoff);
@@ -275,6 +280,8 @@ class Settings {
     // [display-auto-sleep] display-only
     bool autoSleepNoController = DEFAULT_AUTO_SLEEP_NO_CONTROLLER;
     int noControllerSleepTimeout = DEFAULT_NO_CONTROLLER_SLEEP_TIMEOUT_MS;
+    bool autoSleepIdle = DEFAULT_AUTO_SLEEP_IDLE;
+    int idleSleepTimeout = DEFAULT_IDLE_SLEEP_TIMEOUT_MS;
     int wifiApTimeout = DEFAULT_WIFI_AP_TIMEOUT_MS;
     int themeMode = 0;
 

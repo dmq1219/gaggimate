@@ -26,6 +26,54 @@ int16_t calculate_angle(int set_temp, int range, int offset) {
     return (percentage * ((double)range)) - range / 2 - offset;
 }
 
+// [mode-selector] The active mode is shown as a coloured pill; the two other modes
+// flank it as tappable labels (their target mode is stored in user_data and read by
+// ui_event_mode_flank in ui_events.cpp). Display-only; mirrors the design mockups.
+static const char *modeSelectorName(int mode) {
+    switch (mode) {
+    case MODE_STEAM:
+        return "Steam";
+    case MODE_WATER:
+        return "Water";
+    default:
+        return "Brew";
+    }
+}
+
+static uint32_t modeSelectorColor(int mode) {
+    switch (mode) {
+    case MODE_STEAM:
+        return 0xE5392A; // red
+    case MODE_WATER:
+        return 0x1EA6FF; // blue
+    default:
+        return 0xB0651A; // amber/brown (brew)
+    }
+}
+
+static void applyModeSelector(lv_obj_t *pill, lv_obj_t *left, lv_obj_t *right, int activeMode) {
+    if (pill == nullptr) {
+        return;
+    }
+    lv_label_set_text(pill, modeSelectorName(activeMode));
+    lv_obj_set_style_bg_color(pill, lv_color_hex(modeSelectorColor(activeMode)), LV_PART_MAIN | LV_STATE_DEFAULT);
+    // The two non-active modes, in fixed rank order Steam < Water < Brew: lower
+    // rank on the left, higher on the right (matches the mockups).
+    static const int order[3] = {MODE_STEAM, MODE_WATER, MODE_BREW};
+    lv_obj_t *flanks[2] = {left, right};
+    int idx = 0;
+    for (int i = 0; i < 3 && idx < 2; i++) {
+        if (order[i] == activeMode) {
+            continue;
+        }
+        if (flanks[idx] != nullptr) {
+            lv_label_set_text(flanks[idx], modeSelectorName(order[i]));
+            lv_obj_set_user_data(flanks[idx], (void *)(intptr_t)order[i]);
+        }
+        idx++;
+    }
+}
+
 void DefaultUI::updateTempHistory() {
     if (currentTemp > 0) {
         if (tempHistoryIndex >= TEMP_HISTORY_LENGTH) {
@@ -295,6 +343,10 @@ void DefaultUI::loop() {
         updateTempStableFlag();
         handleScreenChange();
         currentScreen = lv_scr_act();
+        // [display-battery] refresh here too so the overlay switches between
+        // "icon + %" (idle screens) and "icon only" (control screens) on navigation,
+        // not only on the 30 s battery sample.
+        updateBatteryOverlay();
         if (lv_scr_act() == ui_StandbyScreen)
             updateStandbyScreen();
         if (lv_scr_act() == ui_StatusScreen)
@@ -348,21 +400,35 @@ void DefaultUI::updateBatteryOverlay() {
         return;
     }
     const uint8_t pct = battery.percent();
+    // Show the numeric percentage only on the calm / idle screens -- standby, profile
+    // selection, and the controller-handshake "waiting" view (rendered on the standby
+    // screen). Once connected and on a control / menu screen, show just the battery
+    // icon so the percentage text doesn't clutter the busy control UI.
+    const bool showNumber =
+        currentScreen == nullptr || currentScreen == ui_StandbyScreen || currentScreen == ui_ProfileScreen;
     // While USB is plugged the reading tracks the charging voltage (approaches ~100% as
-    // it tops off), so show a charging bolt next to the percentage to make clear it is
-    // charging rather than a real "remaining charge" reading.
+    // it tops off), so show a charging bolt to make clear it is charging rather than a
+    // real "remaining charge" reading.
     if (battery.isCharging()) {
-        lv_label_set_text_fmt(batteryLabel, "%s %d%%", LV_SYMBOL_CHARGE, pct);
+        if (showNumber) {
+            lv_label_set_text_fmt(batteryLabel, "%s %d%%", LV_SYMBOL_CHARGE, pct);
+        } else {
+            lv_label_set_text(batteryLabel, LV_SYMBOL_CHARGE);
+        }
         lv_obj_set_style_text_color(batteryLabel, lv_color_hex(0x30D030), LV_PART_MAIN | LV_STATE_DEFAULT);
         return;
     }
-    // On battery: show the approximate percentage only (no voltage).
+    // On battery: approximate level icon, with the percentage number only on idle screens.
     const char *sym = pct >= 80   ? LV_SYMBOL_BATTERY_FULL
                       : pct >= 55 ? LV_SYMBOL_BATTERY_3
                       : pct >= 30 ? LV_SYMBOL_BATTERY_2
                       : pct >= 10 ? LV_SYMBOL_BATTERY_1
                                   : LV_SYMBOL_BATTERY_EMPTY;
-    lv_label_set_text_fmt(batteryLabel, "%s %d%%", sym, pct);
+    if (showNumber) {
+        lv_label_set_text_fmt(batteryLabel, "%s %d%%", sym, pct);
+    } else {
+        lv_label_set_text(batteryLabel, sym);
+    }
     const uint32_t color = battery.isCritical() ? 0xFF3030 : battery.isLow() ? 0xFFB020 : 0xFFFFFF;
     lv_obj_set_style_text_color(batteryLabel, lv_color_hex(color), LV_PART_MAIN | LV_STATE_DEFAULT);
 }
@@ -374,6 +440,19 @@ void DefaultUI::tickAutoSleep(unsigned long now) {
     const Settings &settings = controller->getSettings();
     autoSleep.setEnabled(settings.isAutoSleepNoController());
     autoSleep.setTimeoutMs(settings.getNoControllerSleepTimeout());
+    // [display-auto-sleep] Idle-while-connected: sleep after a period of no touch
+    // even with the controller connected. An idle hot boiler (MODE_BREW) does NOT
+    // block it -- only a running process, or steam/water mode (boiler driven on
+    // demand), counts as "busy" and keeps the screen on.
+    autoSleep.setIdleEnabled(settings.isAutoSleepIdle());
+    autoSleep.setIdleTimeoutMs(settings.getIdleSleepTimeout());
+    const int activeMode = controller->getMode();
+    autoSleep.setMachineBusy(controller->isActive() || activeMode == MODE_STEAM || activeMode == MODE_WATER);
+    // LVGL tracks ms since the last input (touch) event; treat a touch within the
+    // last check interval as a fresh interaction so the idle countdown restarts.
+    if (lv_disp_get_inactive_time(nullptr) < NO_CONTROLLER_SLEEP_CHECK_INTERVAL_MS) {
+        autoSleep.onUserInteraction(now);
+    }
     // Don't sleep during an OTA / firmware update or PID autotune. NOTE: being in
     // Wi-Fi AP / captive-portal mode must NOT block sleep -- when no Wi-Fi is
     // configured the device stays in AP mode permanently (Controller::setupWifi),
@@ -522,9 +601,19 @@ void DefaultUI::setupReactive() {
                           [=]() { adjustHeatingIndicator(ui_GrindScreen_dials); }, &isTemperatureStable, &heatingFlash);
     effect_mgr.use_effect([=] { return currentScreen == ui_StatusScreen; },
                           [=]() { adjustHeatingIndicator(ui_StatusScreen_dials); }, &isTemperatureStable, &heatingFlash);
+    // [mode-selector] active-mode pill + tappable alternatives, on every control screen.
     effect_mgr.use_effect([=] { return currentScreen == ui_SimpleProcessScreen; },
-                          [=]() { lv_label_set_text(ui_SimpleProcessScreen_mainLabel5, mode == MODE_STEAM ? "Steam" : "Water"); },
+                          [=]() {
+                              applyModeSelector(ui_SimpleProcessScreen_modePill, ui_SimpleProcessScreen_modeLeft,
+                                                ui_SimpleProcessScreen_modeRight, mode);
+                          },
                           &mode);
+    effect_mgr.use_effect(
+        [=] { return currentScreen == ui_BrewScreen; },
+        [=]() { applyModeSelector(ui_BrewScreen_modePill, ui_BrewScreen_modeLeft, ui_BrewScreen_modeRight, mode); }, &mode);
+    effect_mgr.use_effect(
+        [=] { return currentScreen == ui_StatusScreen; },
+        [=]() { applyModeSelector(ui_StatusScreen_modePill, ui_StatusScreen_modeLeft, ui_StatusScreen_modeRight, mode); }, &mode);
     effect_mgr.use_effect([=] { return currentScreen == ui_MenuScreen; },
                           [=]() {
                               lv_arc_set_value(uic_MenuScreen_dials_tempGauge, currentTemp);
@@ -702,16 +791,16 @@ void DefaultUI::setupReactive() {
                           &volumetricAvailable);
     effect_mgr.use_effect([=] { return currentScreen == ui_SimpleProcessScreen; },
                           [=]() {
-                              if (mode == MODE_STEAM) {
-                                  _ui_flag_modify(ui_SimpleProcessScreen_goButton, LV_OBJ_FLAG_HIDDEN, active);
-                                  lv_imgbtn_set_src(ui_SimpleProcessScreen_goButton, LV_IMGBTN_STATE_RELEASED, nullptr,
-                                                    &ui_img_691326438, nullptr);
-                              } else {
-                                  lv_imgbtn_set_src(ui_SimpleProcessScreen_goButton, LV_IMGBTN_STATE_RELEASED, nullptr,
-                                                    active ? &ui_img_1456692430 : &ui_img_445946954, nullptr);
-                              }
+                              // [steam-anim]/[water-anim] Both modes use an animated GIF instead of
+                              // the old play/swirl button (3rd arg is "visible?": 1=show/clear
+                              // HIDDEN, 0=hide/add): steam shows the "turn the knob" hint, water the
+                              // pouring-glass start button. The legacy goButton is no longer shown.
+                              const bool steam = (mode == MODE_STEAM);
+                              _ui_flag_modify(ui_SimpleProcessScreen_steamKnob, LV_OBJ_FLAG_HIDDEN, steam);
+                              _ui_flag_modify(ui_SimpleProcessScreen_waterAnim, LV_OBJ_FLAG_HIDDEN, !steam);
+                              lv_obj_add_flag(ui_SimpleProcessScreen_goButton, LV_OBJ_FLAG_HIDDEN);
                           },
-                          &active, &mode);
+                          &mode);
     effect_mgr.use_effect([=] { return currentScreen == ui_GrindScreen; },
                           [=]() {
                               lv_imgbtn_set_src(ui_GrindScreen_startButton, LV_IMGBTN_STATE_RELEASED, nullptr,
@@ -761,12 +850,11 @@ void DefaultUI::setupReactive() {
         &currentProfileIdx, &profileLoaded);
 
     // Show/hide grind button based on SmartGrind setting or Alt Relay function
+    // [mode-selector] Grind removed from the menu per user request. The grind screen
+    // and logic stay reachable via smart-grind / physical button; just hide the menu
+    // button (LVGL flex re-flows the remaining Brew/Steam/Water buttons).
     effect_mgr.use_effect([=] { return currentScreen == ui_MenuScreen; },
-                          [=]() {
-                              grindAvailable ? lv_obj_clear_flag(ui_MenuScreen_grindBtn, LV_OBJ_FLAG_HIDDEN)
-                                             : lv_obj_add_flag(ui_MenuScreen_grindBtn, LV_OBJ_FLAG_HIDDEN);
-                          },
-                          &grindAvailable);
+                          [=]() { lv_obj_add_flag(ui_MenuScreen_grindBtn, LV_OBJ_FLAG_HIDDEN); }, &grindAvailable);
     effect_mgr.use_effect([=] { return currentScreen == ui_BrewScreen; },
                           [=]() {
                               if (volumetricAvailable && bluetoothScales) {

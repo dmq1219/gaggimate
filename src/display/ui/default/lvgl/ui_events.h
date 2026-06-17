@@ -22,6 +22,12 @@ void onBrewScreen(lv_event_t *e);
 void onSteamScreen(lv_event_t *e);
 void onWaterScreen(lv_event_t *e);
 void onGrindScreen(lv_event_t *e);
+
+// Mode selector helpers (see ui_events.cpp). onModeSelect switches to a mode by
+// constant; the create helpers build the pill/flank labels on a content panel.
+void onModeSelect(int mode);
+lv_obj_t *ui_create_mode_pill(lv_obj_t *parent);
+lv_obj_t *ui_create_mode_flank(lv_obj_t *parent, int x_offset);
 void onBrewScreenLoad(lv_event_t *e);
 void onBrewStart(lv_event_t *e);
 void onFlush(lv_event_t *e);

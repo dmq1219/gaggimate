@@ -20,3 +20,7 @@ sim_data/
 .DS_Store
 /display_flash_backup.bin
 /data_p_orig_backup/
+
+# Local UX design scratch (mockups / source design files) — not part of the code
+/*.pdf
+/*.pages

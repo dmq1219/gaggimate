@@ -670,6 +670,9 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
             settings->setAutoSleepNoController(request->hasArg("autoSleepNoController"));
             if (request->hasArg("noControllerSleepTimeout"))
                 settings->setNoControllerSleepTimeout(request->arg("noControllerSleepTimeout").toInt() * 1000);
+            settings->setAutoSleepIdle(request->hasArg("autoSleepIdle"));
+            if (request->hasArg("idleSleepTimeout"))
+                settings->setIdleSleepTimeout(request->arg("idleSleepTimeout").toInt() * 1000);
             if (request->hasArg("steamPumpPercentage"))
                 settings->setSteamPumpPercentage(request->arg("steamPumpPercentage").toFloat());
             if (request->hasArg("steamPumpCutoff"))
@@ -792,6 +795,8 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
     // [display-auto-sleep] display-only settings
     doc["autoSleepNoController"] = settings.isAutoSleepNoController();
     doc["noControllerSleepTimeout"] = settings.getNoControllerSleepTimeout() / 1000;
+    doc["autoSleepIdle"] = settings.isAutoSleepIdle();
+    doc["idleSleepTimeout"] = settings.getIdleSleepTimeout() / 1000;
     doc["steamPumpPercentage"] = settings.getSteamPumpPercentage();
     doc["steamPumpCutoff"] = settings.getSteamPumpCutoff();
     doc["themeMode"] = settings.getThemeMode();

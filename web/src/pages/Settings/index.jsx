@@ -187,6 +187,9 @@ export function Settings() {
       if (key === 'autoSleepNoController') {
         value = !formData.autoSleepNoController;
       }
+      if (key === 'autoSleepIdle') {
+        value = !formData.autoSleepIdle;
+      }
       if (key === 'standbyDisplayEnabled') {
         value = !formData.standbyDisplayEnabled;
         // Set standby brightness to 0 when toggle is off
@@ -576,6 +579,31 @@ export function Settings() {
                 value={formData.noControllerSleepTimeout}
                 onChange={onChange('noControllerSleepTimeout')}
                 disabled={!formData.autoSleepNoController}
+              />
+            </InputGroupField>
+            <ToggleField
+              label='Sleep when idle (controller connected)'
+              htmlFor='autoSleepIdle'
+              checked={formData.autoSleepIdle}
+              onChange={onChange('autoSleepIdle')}
+              helpText='Even while connected to the controller, deep-sleep the display after a period with no touch (an idle hot boiler still sleeps; brew/steam/grind keep it on). Touch the screen to wake.'
+            />
+            <InputGroupField
+              label='Idle sleep timeout (s)'
+              htmlFor='idleSleepTimeout'
+              unit='s'
+              unitAriaLabel='seconds'
+            >
+              <input
+                id='idleSleepTimeout'
+                name='idleSleepTimeout'
+                type='number'
+                className='grow'
+                placeholder='120'
+                min='10'
+                value={formData.idleSleepTimeout}
+                onChange={onChange('idleSleepTimeout')}
+                disabled={!formData.autoSleepIdle}
               />
             </InputGroupField>
             <SettingsFormField label='Theme' htmlFor='themeMode' noMargin>

@@ -15,7 +15,9 @@ lv_obj_t *ui_BrewScreen = NULL;
 lv_obj_t *ui_BrewScreen_dials = NULL;
 lv_obj_t *ui_BrewScreen_ImgButton5 = NULL;
 lv_obj_t *ui_BrewScreen_contentPanel4 = NULL;
-lv_obj_t *ui_BrewScreen_mainLabel3 = NULL;
+lv_obj_t *ui_BrewScreen_modePill = NULL;
+lv_obj_t *ui_BrewScreen_modeLeft = NULL;
+lv_obj_t *ui_BrewScreen_modeRight = NULL;
 lv_obj_t *ui_BrewScreen_startButton = NULL;
 lv_obj_t *ui_BrewScreen_controlContainer = NULL;
 lv_obj_t *ui_BrewScreen_modeSwitch = NULL;
@@ -205,31 +207,23 @@ void ui_BrewScreen_screen_init(void) {
                                            _ui_theme_alpha_NiceWhite);
     lv_obj_set_style_border_width(ui_BrewScreen_contentPanel4, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_BrewScreen_mainLabel3 = lv_label_create(ui_BrewScreen_contentPanel4);
-    lv_obj_set_width(ui_BrewScreen_mainLabel3, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_BrewScreen_mainLabel3, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_BrewScreen_mainLabel3, 0);
-    lv_obj_set_y(ui_BrewScreen_mainLabel3, -140);
-    lv_obj_set_align(ui_BrewScreen_mainLabel3, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_BrewScreen_mainLabel3, "Brew");
-    ui_object_set_themeable_style_property(ui_BrewScreen_mainLabel3, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_COLOR,
-                                           _ui_theme_color_NiceWhite);
-    ui_object_set_themeable_style_property(ui_BrewScreen_mainLabel3, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_OPA,
-                                           _ui_theme_alpha_NiceWhite);
-    lv_obj_set_style_text_font(ui_BrewScreen_mainLabel3, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
+    // [mode-selector] active mode as a coloured pill + two tappable alternatives,
+    // replacing the old single "Brew" label. Driven by DefaultUI.
+    ui_BrewScreen_modePill = ui_create_mode_pill(ui_BrewScreen_contentPanel4);
+    ui_BrewScreen_modeLeft = ui_create_mode_flank(ui_BrewScreen_contentPanel4, -92);
+    ui_BrewScreen_modeRight = ui_create_mode_flank(ui_BrewScreen_contentPanel4, 92);
 
-    ui_BrewScreen_startButton = lv_imgbtn_create(ui_BrewScreen_contentPanel4);
-    lv_imgbtn_set_src(ui_BrewScreen_startButton, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_445946954, NULL);
-    lv_obj_set_width(ui_BrewScreen_startButton, 40);
-    lv_obj_set_height(ui_BrewScreen_startButton, 40);
+    // [brew-anim] Animated "coffee pouring" start button (replaces the play
+    // triangle). lv_gif loops the pour even when idle; CLICKABLE so it still
+    // starts the brew (click) / flush (long-press) via the same event handler.
+    ui_BrewScreen_startButton = lv_gif_create(ui_BrewScreen_contentPanel4);
+    lv_gif_set_src(ui_BrewScreen_startButton, &ui_img_brew_pour_anim);
     lv_obj_set_x(ui_BrewScreen_startButton, 0);
-    lv_obj_set_y(ui_BrewScreen_startButton, 130);
+    lv_obj_set_y(ui_BrewScreen_startButton, 112);
     lv_obj_set_align(ui_BrewScreen_startButton, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_BrewScreen_startButton, LV_OBJ_FLAG_HIDDEN); /// Flags
-    ui_object_set_themeable_style_property(ui_BrewScreen_startButton, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_IMG_RECOLOR,
-                                           _ui_theme_color_NiceWhite);
-    ui_object_set_themeable_style_property(ui_BrewScreen_startButton, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_IMG_RECOLOR_OPA,
-                                           _ui_theme_alpha_NiceWhite);
+    lv_obj_add_flag(ui_BrewScreen_startButton, LV_OBJ_FLAG_CLICKABLE);    /// Flags
+    lv_obj_add_flag(ui_BrewScreen_startButton, LV_OBJ_FLAG_HIDDEN);       /// Flags
+    lv_obj_clear_flag(ui_BrewScreen_startButton, LV_OBJ_FLAG_SCROLLABLE); /// Flags
 
     ui_BrewScreen_controlContainer = lv_obj_create(ui_BrewScreen_contentPanel4);
     lv_obj_remove_style_all(ui_BrewScreen_controlContainer);
@@ -566,7 +560,9 @@ void ui_BrewScreen_screen_destroy(void) {
     uic_BrewScreen_dials_tempText = NULL;
     ui_BrewScreen_ImgButton5 = NULL;
     ui_BrewScreen_contentPanel4 = NULL;
-    ui_BrewScreen_mainLabel3 = NULL;
+    ui_BrewScreen_modePill = NULL;
+    ui_BrewScreen_modeLeft = NULL;
+    ui_BrewScreen_modeRight = NULL;
     ui_BrewScreen_startButton = NULL;
     ui_BrewScreen_controlContainer = NULL;
     ui_BrewScreen_modeSwitch = NULL;

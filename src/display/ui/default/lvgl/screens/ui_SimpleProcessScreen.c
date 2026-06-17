@@ -15,12 +15,16 @@ lv_obj_t *ui_SimpleProcessScreen = NULL;
 lv_obj_t *ui_SimpleProcessScreen_dials = NULL;
 lv_obj_t *ui_SimpleProcessScreen_ImgButton6 = NULL;
 lv_obj_t *ui_SimpleProcessScreen_contentPanel5 = NULL;
-lv_obj_t *ui_SimpleProcessScreen_mainLabel5 = NULL;
+lv_obj_t *ui_SimpleProcessScreen_modePill = NULL;
+lv_obj_t *ui_SimpleProcessScreen_modeLeft = NULL;
+lv_obj_t *ui_SimpleProcessScreen_modeRight = NULL;
 lv_obj_t *ui_SimpleProcessScreen_goButton = NULL;
 lv_obj_t *ui_SimpleProcessScreen_downTempButton = NULL;
 lv_obj_t *ui_SimpleProcessScreen_upTempButton = NULL;
 lv_obj_t *ui_SimpleProcessScreen_targetTemp = NULL;
 lv_obj_t *ui_SimpleProcessScreen_Image9 = NULL;
+lv_obj_t *ui_SimpleProcessScreen_steamKnob = NULL;
+lv_obj_t *ui_SimpleProcessScreen_waterAnim = NULL;
 // event funtions
 void ui_event_SimpleProcessScreen(lv_event_t *e) {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -108,18 +112,11 @@ void ui_SimpleProcessScreen_screen_init(void) {
                                            LV_STYLE_BORDER_OPA, _ui_theme_alpha_NiceWhite);
     lv_obj_set_style_border_width(ui_SimpleProcessScreen_contentPanel5, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_SimpleProcessScreen_mainLabel5 = lv_label_create(ui_SimpleProcessScreen_contentPanel5);
-    lv_obj_set_width(ui_SimpleProcessScreen_mainLabel5, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_SimpleProcessScreen_mainLabel5, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_SimpleProcessScreen_mainLabel5, 0);
-    lv_obj_set_y(ui_SimpleProcessScreen_mainLabel5, -140);
-    lv_obj_set_align(ui_SimpleProcessScreen_mainLabel5, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_SimpleProcessScreen_mainLabel5, "Steam");
-    ui_object_set_themeable_style_property(ui_SimpleProcessScreen_mainLabel5, LV_PART_MAIN | LV_STATE_DEFAULT,
-                                           LV_STYLE_TEXT_COLOR, _ui_theme_color_NiceWhite);
-    ui_object_set_themeable_style_property(ui_SimpleProcessScreen_mainLabel5, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_OPA,
-                                           _ui_theme_alpha_NiceWhite);
-    lv_obj_set_style_text_font(ui_SimpleProcessScreen_mainLabel5, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
+    // [mode-selector] active mode as a coloured pill + two tappable alternatives,
+    // replacing the old single "Steam"/"Water" label. Driven by DefaultUI.
+    ui_SimpleProcessScreen_modePill = ui_create_mode_pill(ui_SimpleProcessScreen_contentPanel5);
+    ui_SimpleProcessScreen_modeLeft = ui_create_mode_flank(ui_SimpleProcessScreen_contentPanel5, -92);
+    ui_SimpleProcessScreen_modeRight = ui_create_mode_flank(ui_SimpleProcessScreen_contentPanel5, 92);
 
     ui_SimpleProcessScreen_goButton = lv_imgbtn_create(ui_SimpleProcessScreen_contentPanel5);
     lv_imgbtn_set_src(ui_SimpleProcessScreen_goButton, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_445946954, NULL);
@@ -183,8 +180,31 @@ void ui_SimpleProcessScreen_screen_init(void) {
     ui_object_set_themeable_style_property(ui_SimpleProcessScreen_Image9, LV_PART_MAIN | LV_STATE_DEFAULT,
                                            LV_STYLE_IMG_RECOLOR_OPA, _ui_theme_alpha_NiceWhite);
 
+    // [steam-anim] "Turn the steam knob" hint GIF, low-centre (where the swirl
+    // button sat). Hidden by default; DefaultUI shows it only in steam mode.
+    ui_SimpleProcessScreen_steamKnob = lv_gif_create(ui_SimpleProcessScreen_contentPanel5);
+    lv_gif_set_src(ui_SimpleProcessScreen_steamKnob, &ui_img_steam_knob_anim);
+    lv_obj_set_x(ui_SimpleProcessScreen_steamKnob, 0);
+    lv_obj_set_y(ui_SimpleProcessScreen_steamKnob, 108);
+    lv_obj_set_align(ui_SimpleProcessScreen_steamKnob, LV_ALIGN_CENTER);
+    lv_obj_clear_flag(ui_SimpleProcessScreen_steamKnob, LV_OBJ_FLAG_SCROLLABLE); /// Flags
+    lv_obj_add_flag(ui_SimpleProcessScreen_steamKnob, LV_OBJ_FLAG_HIDDEN);       /// Flags
+
+    // [water-anim] Animated hot-water button (replaces the play triangle in water
+    // mode). Same height as the brew button; CLICKABLE -> toggles water via the
+    // goButton handler. Hidden by default; DefaultUI shows it only in water mode.
+    ui_SimpleProcessScreen_waterAnim = lv_gif_create(ui_SimpleProcessScreen_contentPanel5);
+    lv_gif_set_src(ui_SimpleProcessScreen_waterAnim, &ui_img_water_pour_anim);
+    lv_obj_set_x(ui_SimpleProcessScreen_waterAnim, 0);
+    lv_obj_set_y(ui_SimpleProcessScreen_waterAnim, 110);
+    lv_obj_set_align(ui_SimpleProcessScreen_waterAnim, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_SimpleProcessScreen_waterAnim, LV_OBJ_FLAG_CLICKABLE);    /// Flags
+    lv_obj_add_flag(ui_SimpleProcessScreen_waterAnim, LV_OBJ_FLAG_HIDDEN);       /// Flags
+    lv_obj_clear_flag(ui_SimpleProcessScreen_waterAnim, LV_OBJ_FLAG_SCROLLABLE); /// Flags
+
     lv_obj_add_event_cb(ui_SimpleProcessScreen_ImgButton6, ui_event_SimpleProcessScreen_ImgButton6, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_SimpleProcessScreen_goButton, ui_event_SimpleProcessScreen_goButton, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_SimpleProcessScreen_waterAnim, ui_event_SimpleProcessScreen_goButton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_SimpleProcessScreen_downTempButton, ui_event_SimpleProcessScreen_downTempButton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_SimpleProcessScreen_upTempButton, ui_event_SimpleProcessScreen_upTempButton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_SimpleProcessScreen, ui_event_SimpleProcessScreen, LV_EVENT_ALL, NULL);
@@ -211,10 +231,14 @@ void ui_SimpleProcessScreen_screen_destroy(void) {
     uic_SimpleProcessScreen_dials_tempText = NULL;
     ui_SimpleProcessScreen_ImgButton6 = NULL;
     ui_SimpleProcessScreen_contentPanel5 = NULL;
-    ui_SimpleProcessScreen_mainLabel5 = NULL;
+    ui_SimpleProcessScreen_modePill = NULL;
+    ui_SimpleProcessScreen_modeLeft = NULL;
+    ui_SimpleProcessScreen_modeRight = NULL;
     ui_SimpleProcessScreen_goButton = NULL;
     ui_SimpleProcessScreen_downTempButton = NULL;
     ui_SimpleProcessScreen_upTempButton = NULL;
     ui_SimpleProcessScreen_targetTemp = NULL;
     ui_SimpleProcessScreen_Image9 = NULL;
+    ui_SimpleProcessScreen_steamKnob = NULL;
+    ui_SimpleProcessScreen_waterAnim = NULL;
 }

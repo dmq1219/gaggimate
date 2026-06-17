@@ -60,6 +60,71 @@ void onSteamScreen(lv_event_t *e) {
     controller.deactivate();
 }
 
+// --- Mode selector (Brew/Steam/Water indicator + tappable alternatives) -------
+// The active mode is shown as a coloured "pill" at the top of a control screen;
+// the two other modes flank it as tappable labels that switch mode directly. The
+// flank's target mode is stored in its user_data by DefaultUI::applyModeSelector.
+void onModeSelect(int mode) {
+    // [mode-selector] Anti-mistouch: ignore flank taps only during an active BREW so
+    // an accidental touch can't cancel the shot. Steam/water are quick manual
+    // operations where switching freely is fine, so they are NOT locked.
+    if (controller.isActive() && controller.getMode() == MODE_BREW) {
+        return;
+    }
+    controller.deactivate();
+    if (mode == MODE_STEAM) {
+        controller.getUI()->changeScreen(&ui_SimpleProcessScreen, &ui_SimpleProcessScreen_screen_init);
+        controller.setMode(MODE_STEAM);
+    } else if (mode == MODE_WATER) {
+        controller.getUI()->changeScreen(&ui_SimpleProcessScreen, &ui_SimpleProcessScreen_screen_init);
+        controller.setMode(MODE_WATER);
+    } else {
+        controller.getUI()->changeScreen(&ui_BrewScreen, &ui_BrewScreen_screen_init);
+        controller.setMode(MODE_BREW);
+    }
+}
+
+static void ui_event_mode_flank(lv_event_t *e) {
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED)
+        return;
+    lv_obj_t *label = lv_event_get_target(e);
+    onModeSelect((int)(intptr_t)lv_obj_get_user_data(label));
+}
+
+lv_obj_t *ui_create_mode_pill(lv_obj_t *parent) {
+    lv_obj_t *pill = lv_label_create(parent);
+    lv_obj_set_width(pill, LV_SIZE_CONTENT);
+    lv_obj_set_height(pill, LV_SIZE_CONTENT);
+    lv_obj_set_x(pill, 0);
+    lv_obj_set_y(pill, -150);
+    lv_obj_set_align(pill, LV_ALIGN_CENTER);
+    lv_label_set_text(pill, "Brew");
+    lv_obj_set_style_text_color(pill, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(pill, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(pill, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(pill, lv_color_hex(0xB0651A), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(pill, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_hor(pill, 16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_ver(pill, 4, LV_PART_MAIN | LV_STATE_DEFAULT);
+    return pill;
+}
+
+lv_obj_t *ui_create_mode_flank(lv_obj_t *parent, int x_offset) {
+    lv_obj_t *label = lv_label_create(parent);
+    lv_obj_set_width(label, LV_SIZE_CONTENT);
+    lv_obj_set_height(label, LV_SIZE_CONTENT);
+    lv_obj_set_x(label, x_offset);
+    lv_obj_set_y(label, -108);
+    lv_obj_set_align(label, LV_ALIGN_CENTER);
+    lv_label_set_text(label, "");
+    lv_obj_set_style_text_color(label, lv_color_hex(0xFAFAFA), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_add_flag(label, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_ext_click_area(label, 18);
+    lv_obj_add_event_cb(label, ui_event_mode_flank, LV_EVENT_ALL, NULL);
+    return label;
+}
+
 void onWakeup(lv_event_t *e) {
     if (controller.isUpdating() || controller.isErrorState() || controller.isAutotuning() ||
         !controller.getClientController()->isConnected()) {
